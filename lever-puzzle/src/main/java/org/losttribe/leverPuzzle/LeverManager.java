@@ -1,9 +1,9 @@
-package org.losttribe.leverpuzzle;
+package org.losttribe.leverPuzzle;
 
-import org.losttribe.leverpuzzle.LeverPuzzle;
-import org.losttribe.leverpuzzle.LeverData;
-import org.losttribe.leverpuzzle.SetupSession;
-import org.losttribe.leverpuzzle.LocationUtils;
+import org.losttribe.leverPuzzle.LeverPuzzle;
+import org.losttribe.leverPuzzle.LeverData;
+import org.losttribe.leverPuzzle.SetupSession;
+import org.losttribe.leverPuzzle.LocationUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;

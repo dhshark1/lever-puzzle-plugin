@@ -1,4 +1,4 @@
-package org.losttribe.leverpuzzle;
+package org.losttribe.leverPuzzle;
 
 import org.bukkit.Location;
 

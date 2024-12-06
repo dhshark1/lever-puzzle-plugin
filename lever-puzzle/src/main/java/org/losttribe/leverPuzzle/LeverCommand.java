@@ -1,7 +1,6 @@
 package org.losttribe.leverPuzzle;
 
-import com.losttribe.leverpuzzle.LeverPuzzle;
-import com.losttribe.leverpuzzle.managers.LeverManager;
+import org.losttribe.leverPuzzle.LeverManager;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;

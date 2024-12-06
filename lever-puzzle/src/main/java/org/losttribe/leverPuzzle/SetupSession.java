@@ -1,4 +1,4 @@
-package org.losttribe.leverpuzzle;
+package org.losttribe.leverPuzzle;
 
 import java.util.ArrayList;
 import java.util.List;

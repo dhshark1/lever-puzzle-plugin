@@ -1,10 +1,7 @@
 package org.losttribe.leverPuzzle;
 
-package com.yourname.leverpuzzle;
-
-import com.yourname.leverpuzzle.commands.LeverCommand;
-import com.yourname.leverpuzzle.listeners.LeverListener;
-import com.yourname.leverpuzzle.managers.LeverManager;
+import org.losttribe.leverPuzzle.LeverListener;
+import org.losttribe.leverPuzzle.LeverManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class LeverPuzzle extends JavaPlugin {
