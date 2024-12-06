@@ -1,0 +1,13 @@
+name: lever-puzzle
+version: '1.0-SNAPSHOT'
+main: org.losttribe.leverPuzzle.LeverPuzzle
+api-version: '1.21'
+commands:
+  levers:
+    description: Lever Puzzle commands
+    usage: /<command> <setup|setwall>
+    aliases: [leverpuzzle]
+permissions:
+  lt.admin:
+    description: Permission to use Lever Puzzle admin commands
+    default: op
