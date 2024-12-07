@@ -1,7 +1,5 @@
 package org.losttribe.leverPuzzle;
 
-import org.losttribe.leverPuzzle.LeverListener;
-import org.losttribe.leverPuzzle.LeverManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class LeverPuzzle extends JavaPlugin {
@@ -10,27 +8,42 @@ public class LeverPuzzle extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        saveDefaultConfig();
+        // Ensure the data folder exists
+        if (!getDataFolder().exists()) {
+            getDataFolder().mkdirs();
+        }
 
-        // Initialize managers
+        getLogger().info("LeverPuzzle: Initializing LeverManager.");
+
+        // Initialize LeverManager
         leverManager = new LeverManager(this);
+        getLogger().info("LeverPuzzle: LeverManager initialized.");
 
-        // Register commands
-        getCommand("levers").setExecutor(new LeverCommand(this, leverManager));
+        // Register Commands
+        if (getCommand("levers") != null) {
+            getCommand("levers").setExecutor(new LeverCommand(this, leverManager));
+            getLogger().info("LeverPuzzle: Command 'levers' registered.");
+        } else {
+            getLogger().severe("LeverPuzzle: Command 'levers' not found in plugin.yml!");
+        }
 
-        // Register event listeners
+        // Register Event Listeners
         getServer().getPluginManager().registerEvents(new LeverListener(this, leverManager), this);
+        getLogger().info("LeverPuzzle: LeverListener registered.");
 
-        // Load existing configurations
-        leverManager.loadConfigurations();
+        // Configurations are loaded in LeverManager constructor
 
         getLogger().info("LeverPuzzle has been enabled.");
     }
 
     @Override
     public void onDisable() {
-        // Save configurations on disable
-        leverManager.saveConfigurations();
+        if (leverManager != null) {
+            leverManager.saveConfigurations();
+            getLogger().info("LeverPuzzle: Configurations saved.");
+        } else {
+            getLogger().severe("LeverPuzzle: LeverManager was not initialized!");
+        }
         getLogger().info("LeverPuzzle has been disabled.");
     }
 

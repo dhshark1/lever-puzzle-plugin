@@ -1,13 +1,11 @@
 package org.losttribe.leverPuzzle;
 
-import org.losttribe.leverPuzzle.LeverManager;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
 
 public class LeverCommand implements CommandExecutor {
 
@@ -20,8 +18,7 @@ public class LeverCommand implements CommandExecutor {
     }
 
     @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
-                             @NotNull String label, String[] args) {
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 
         if (!(sender instanceof Player)) {
             sender.sendMessage(ChatColor.RED + "Only players can execute this command.");
@@ -84,11 +81,11 @@ public class LeverCommand implements CommandExecutor {
         switch (position) {
             case "top":
                 leverManager.setWallCorner(player, loc, true);
-                player.sendMessage(ChatColor.GREEN + "Top left corner of the door set.");
+                player.sendMessage(ChatColor.GREEN + "Top left corner of the wall set.");
                 break;
             case "bottom":
                 leverManager.setWallCorner(player, loc, false);
-                player.sendMessage(ChatColor.GREEN + "Bottom right corner of the door set.");
+                player.sendMessage(ChatColor.GREEN + "Bottom right corner of the wall set.");
                 break;
             default:
                 player.sendMessage(ChatColor.RED + "Invalid argument. Use 'top' or 'bottom'.");
