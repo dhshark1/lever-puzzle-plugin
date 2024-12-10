@@ -9,6 +9,8 @@ import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -16,7 +18,7 @@ public class LeverManager {
 
     private final LeverPuzzle plugin;
     private YamlConfiguration gameData;
-    private final Set<Player> setupPlayers; // Tracks players in setup mode
+    private final Set<Player> setupPlayers;
 
     public LeverManager(LeverPuzzle plugin) {
         this.plugin = plugin;
@@ -24,24 +26,37 @@ public class LeverManager {
         this.gameData = loadGameData();
     }
 
-    /**
-     * Loads the game data from 'game_data.yml'.
-     * If the file doesn't exist, it creates a new one from the default resource.
-     *
-     * @return YamlConfiguration object representing the game data.
-     */
     public YamlConfiguration loadGameData() {
         File file = new File(plugin.getDataFolder(), "game_data.yml");
         if (!file.exists()) {
-            plugin.getLogger().info("No game_data.yml found, creating a new one.");
-            plugin.saveResource("game_data.yml", false); // Copies from JAR to data folder
+            plugin.getLogger().info("No game_data.yml found, creating a fresh minimal one.");
+            try {
+                if (!plugin.getDataFolder().exists()) {
+                    plugin.getDataFolder().mkdirs();
+                }
+                if (file.createNewFile()) {
+                    String defaultContent =
+                            "levers: {}\n" +
+                                    "wall:\n" +
+                                    "  topLeft: null\n" +
+                                    "  bottomRight: null\n";
+
+                    Files.write(file.toPath(), defaultContent.getBytes(StandardCharsets.UTF_8));
+                    plugin.getLogger().info("Minimal game_data.yml created successfully.");
+                } else {
+                    plugin.getLogger().severe("Failed to create game_data.yml. Check file permissions.");
+                }
+            } catch (IOException e) {
+                plugin.getLogger().severe("Error creating game_data.yml.");
+                e.printStackTrace();
+            }
+        } else {
+            plugin.getLogger().info("game_data.yml found and loaded.");
         }
+
         return YamlConfiguration.loadConfiguration(file);
     }
 
-    /**
-     * Saves the current game data to 'game_data.yml'.
-     */
     public void saveConfigurations() {
         File file = new File(plugin.getDataFolder(), "game_data.yml");
         try {
@@ -53,58 +68,26 @@ public class LeverManager {
         }
     }
 
-    /**
-     * Adds a lever to the puzzle with its current state.
-     *
-     * @param location Location of the lever.
-     * @param state    Desired state of the lever (true for powered, false otherwise).
-     */
-    public void addLever(Location location, boolean state) {
+    public void addLever(Player player, Location location, boolean state) {
         String path = "levers." + location.getWorld().getName() + "." +
                 location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
+
+        boolean leverExists = gameData.contains(path);
+
+        if (!leverExists && !isSettingUp(player)) {
+            plugin.getLogger().info("Attempted to add a new lever outside of setup mode. Ignoring...");
+            return;
+        }
+
         gameData.set(path + ".state", state);
         saveConfigurations();
-        plugin.getLogger().info("Lever added at " + location.toString() + " with state " + state);
+
+        plugin.getLogger().info((leverExists ? "Updated" : "Added")
+                + " lever at " + location.toString() + " with state " + state);
     }
 
-    /**
-     * Checks if a player is currently in setup mode.
-     *
-     * @param player The player to check.
-     * @return True if the player is in setup mode, false otherwise.
-     */
-    public boolean isSettingUp(Player player) {
-        return setupPlayers.contains(player);
-    }
-
-    /**
-     * Starts setup mode for a player.
-     *
-     * @param player The player to add to setup mode.
-     */
-    public void startSetup(Player player) {
-        setupPlayers.add(player);
-        plugin.getLogger().info(player.getName() + " has entered setup mode.");
-    }
-
-    /**
-     * Finishes setup mode for a player.
-     *
-     * @param player The player to remove from setup mode.
-     */
-    public void finishSetup(Player player) {
-        setupPlayers.remove(player);
-        plugin.getLogger().info(player.getName() + " has exited setup mode.");
-    }
-
-    /**
-     * Sets a wall corner (top-left or bottom-right) based on player input.
-     *
-     * @param player The player setting the wall corner.
-     * @param loc    The location of the corner.
-     * @param isTop  True if setting the top-left corner, false for bottom-right.
-     */
     public void setWallCorner(Player player, Location loc, boolean isTop) {
+
         if (isTop) {
             gameData.set("wall.topLeft", loc);
             plugin.getLogger().info(player.getName() + " set wall top-left corner at " + loc.toString());
@@ -115,33 +98,43 @@ public class LeverManager {
         saveConfigurations();
     }
 
-    /**
-     * Checks the states of all levers to determine if a specific pattern is achieved.
-     * If the pattern matches, performs actions like removing the wall.
-     */
-    public void checkLeverStates() {
+    public boolean isSettingUp(Player player) {
+        return setupPlayers.contains(player);
+    }
+
+    public void startSetup(Player player) {
+        setupPlayers.add(player);
+        plugin.getLogger().info(player.getName() + " has entered setup mode.");
+    }
+
+    public void finishSetup(Player player) {
+        setupPlayers.remove(player);
+        plugin.getLogger().info(player.getName() + " has exited setup mode.");
+    }
+
+    public void checkLeverStates(Player player) {
         plugin.getLogger().info("Checking lever states...");
 
-        // Example logic: If all levers are powered, remove the wall
-        boolean allLeversPowered = true;
-
-        if (gameData.contains("levers")) {
-            for (String world : gameData.getConfigurationSection("levers").getKeys(false)) {
-                for (String leverKey : gameData.getConfigurationSection("levers." + world).getKeys(false)) {
-                    boolean state = gameData.getBoolean("levers." + world + "." + leverKey + ".state");
-                    if (!state) {
-                        allLeversPowered = false;
-                        break;
-                    }
-                }
-                if (!allLeversPowered) break;
-            }
-        } else {
-            plugin.getLogger().warning("No levers configured in game_data.yml.");
+        if (!gameData.contains("levers") || gameData.getLocation("wall.bottomRight") == null || gameData.getLocation("wall.topLeft") == null) {
             return;
         }
 
-        if (allLeversPowered) {
+        boolean allLeversPowered = true;
+
+        for (String world : gameData.getConfigurationSection("levers").getKeys(false)) {
+            for (String leverKey : gameData.getConfigurationSection("levers." + world).getKeys(false)) {
+                boolean state = gameData.getBoolean("levers." + world + "." + leverKey + ".state");
+                plugin.getLogger().info(leverKey + " " + state);
+
+                if (!state) {
+                    allLeversPowered = false;
+                    break;
+                }
+            }
+            if (!allLeversPowered) break;
+        }
+
+        if (allLeversPowered && !isSettingUp(player)) {
             removeWall();
             Bukkit.broadcastMessage(ChatColor.GREEN + "The wall has been removed! Access granted.");
             plugin.getLogger().info("All levers are powered. Wall removed.");
@@ -150,9 +143,6 @@ public class LeverManager {
         }
     }
 
-    /**
-     * Removes the wall based on the configured top-left and bottom-right corners.
-     */
     private void removeWall() {
         plugin.getLogger().info("Removing the wall...");
 
@@ -160,7 +150,6 @@ public class LeverManager {
         Location bottomRight = gameData.getLocation("wall.bottomRight");
 
         if (topLeft == null || bottomRight == null) {
-            plugin.getLogger().severe("Wall coordinates are not set in game_data.yml.");
             return;
         }
 

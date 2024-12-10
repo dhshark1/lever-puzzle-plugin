@@ -2,6 +2,7 @@ package org.losttribe.leverPuzzle;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -76,20 +77,31 @@ public class LeverCommand implements CommandExecutor {
         }
 
         String position = args[1].toLowerCase();
-        Location loc = player.getLocation();
+        Block targetBlock = player.getTargetBlockExact(50);
+
+        if (targetBlock == null) {
+            player.sendMessage(ChatColor.RED + "You are not looking at any block within range.");
+            return;
+        }
+
+        Location loc = targetBlock.getLocation();
 
         switch (position) {
             case "top":
                 leverManager.setWallCorner(player, loc, true);
-                player.sendMessage(ChatColor.GREEN + "Top left corner of the wall set.");
+                player.sendMessage(ChatColor.GREEN + "Top left corner of the wall set at the block you're looking at.");
                 break;
             case "bottom":
                 leverManager.setWallCorner(player, loc, false);
-                player.sendMessage(ChatColor.GREEN + "Bottom right corner of the wall set.");
+                player.sendMessage(ChatColor.GREEN + "Bottom right corner of the wall set at the block you're looking at.");
                 break;
             default:
                 player.sendMessage(ChatColor.RED + "Invalid argument. Use 'top' or 'bottom'.");
                 break;
         }
+
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> leverManager.checkLeverStates(player), 1L);
+
     }
+
 }
