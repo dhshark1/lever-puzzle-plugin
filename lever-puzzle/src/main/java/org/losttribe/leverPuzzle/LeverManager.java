@@ -1,10 +1,9 @@
 package org.losttribe.leverPuzzle;
 
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
+import org.bukkit.*;
+import org.bukkit.block.Block;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
 import java.io.File;
@@ -72,9 +71,7 @@ public class LeverManager {
         String path = "levers." + location.getWorld().getName() + "." +
                 location.getBlockX() + "_" + location.getBlockY() + "_" + location.getBlockZ();
 
-        boolean leverExists = gameData.contains(path);
-
-        if (!leverExists && !isSettingUp(player)) {
+        if (!isSettingUp(player)) {
             plugin.getLogger().info("Attempted to add a new lever outside of setup mode. Ignoring...");
             return;
         }
@@ -82,8 +79,7 @@ public class LeverManager {
         gameData.set(path + ".state", state);
         saveConfigurations();
 
-        plugin.getLogger().info((leverExists ? "Updated" : "Added")
-                + " lever at " + location.toString() + " with state " + state);
+        plugin.getLogger().info("Added lever at " + location.toString() + " with state " + state);
     }
 
     public void setWallCorner(Player player, Location loc, boolean isTop) {
@@ -115,32 +111,101 @@ public class LeverManager {
     public void checkLeverStates(Player player) {
         plugin.getLogger().info("Checking lever states...");
 
-        if (!gameData.contains("levers") || gameData.getLocation("wall.bottomRight") == null || gameData.getLocation("wall.topLeft") == null) {
+        if (!hasRequiredConfiguration() || !isPatternMatched() || isSettingUp(player)) {
+//            plugin.getLogger().info("Required configuration not found. Aborting lever state check.");
             return;
         }
 
-        boolean allLeversPowered = true;
+//        if (!isPatternMatched()) {
+//            plugin.getLogger().info("Lever pattern not matched. Wall remains.");
+//            return;
+//        }
+//
+//        if (isSettingUp(player)) {
+//            plugin.getLogger().info("Pattern matched, but player is in setup mode. Wall not removed.");
+//            return;
+//        }
 
-        for (String world : gameData.getConfigurationSection("levers").getKeys(false)) {
-            for (String leverKey : gameData.getConfigurationSection("levers." + world).getKeys(false)) {
-                boolean state = gameData.getBoolean("levers." + world + "." + leverKey + ".state");
-                plugin.getLogger().info(leverKey + " " + state);
+        removeWall();
+        Bukkit.broadcastMessage(ChatColor.GREEN + "The wall has been removed! Access granted.");
+        plugin.getLogger().info("Lever pattern matched. Wall removed.");
+    }
 
-                if (!state) {
-                    allLeversPowered = false;
-                    break;
+
+    private boolean hasRequiredConfiguration() {
+        if (!gameData.contains("levers")) return false;
+        if (gameData.getLocation("wall.topLeft") == null) return false;
+        if (gameData.getLocation("wall.bottomRight") == null) return false;
+        return true;
+    }
+
+    private boolean isPatternMatched() {
+        ConfigurationSection leversSection = gameData.getConfigurationSection("levers");
+        if (leversSection == null) {
+            plugin.getLogger().warning("No 'levers' section found in game_data.yml.");
+            return false;
+        }
+
+        for (String worldName : leversSection.getKeys(false)) {
+            ConfigurationSection worldLevers = leversSection.getConfigurationSection(worldName);
+            if (worldLevers == null) continue;
+
+            for (String leverKey : worldLevers.getKeys(false)) {
+                if (!isLeverMatched(worldName, leverKey, worldLevers)) {
+                    return false;
                 }
             }
-            if (!allLeversPowered) break;
+        }
+        return true;
+    }
+
+    private boolean isLeverMatched(String worldName, String leverKey, ConfigurationSection worldLevers) {
+        boolean expectedState = worldLevers.getBoolean(leverKey + ".state", false);
+        plugin.getLogger().info("Lever " + leverKey + " expected: " + expectedState);
+
+        Location leverLocation = parseLeverKey(worldName, leverKey);
+        if (leverLocation == null) {
+            plugin.getLogger().warning("Invalid lever key: " + leverKey);
+            return false;
         }
 
-        if (allLeversPowered && !isSettingUp(player)) {
-            removeWall();
-            Bukkit.broadcastMessage(ChatColor.GREEN + "The wall has been removed! Access granted.");
-            plugin.getLogger().info("All levers are powered. Wall removed.");
-        } else {
-            plugin.getLogger().info("Lever pattern not matched. Wall remains.");
+        return doesLeverMatch(leverLocation, expectedState);
+    }
+
+    private Location parseLeverKey(String worldName, String leverKey) {
+        String[] coords = leverKey.split("_");
+        if (coords.length != 3) {
+            plugin.getLogger().warning("Invalid lever key format: " + leverKey);
+            return null;
         }
+
+        try {
+            int x = Integer.parseInt(coords[0]);
+            int y = Integer.parseInt(coords[1]);
+            int z = Integer.parseInt(coords[2]);
+            World world = Bukkit.getWorld(worldName);
+            if (world == null) {
+                plugin.getLogger().warning("World not found: " + worldName);
+                return null;
+            }
+            return new Location(world, x, y, z);
+        } catch (NumberFormatException e) {
+            plugin.getLogger().warning("Invalid coordinates in lever key: " + leverKey);
+            return null;
+        }
+    }
+
+    private boolean doesLeverMatch(Location leverLocation, boolean expectedState) {
+        Block leverBlock = leverLocation.getBlock();
+        if (leverBlock.getType() != Material.LEVER) {
+            plugin.getLogger().warning("No lever found at " + leverLocation + ". Found " + leverBlock.getType());
+            return false;
+        }
+
+        boolean currentState = !leverBlock.getBlockData().getAsString().contains("powered=true");
+        plugin.getLogger().info("At " + leverLocation + " expected: " + expectedState + ", current: " + currentState);
+
+        return currentState == expectedState;
     }
 
     private void removeWall() {
@@ -172,5 +237,15 @@ public class LeverManager {
         }
 
         plugin.getLogger().info("Wall removed between " + topLeft.toString() + " and " + bottomRight.toString());
+    }
+
+    public boolean isLeverPartOfPuzzle(Location leverLocation) {
+        if (!gameData.contains("levers")) return false;
+
+        String worldName = leverLocation.getWorld().getName();
+        String leverKey = leverLocation.getBlockX() + "_" + leverLocation.getBlockY() + "_" + leverLocation.getBlockZ();
+
+        String path = "levers." + worldName + "." + leverKey;
+        return gameData.contains(path);
     }
 }

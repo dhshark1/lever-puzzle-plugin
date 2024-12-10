@@ -1,6 +1,7 @@
 package org.losttribe.leverPuzzle;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -60,10 +61,13 @@ public class LeverListener implements Listener {
         String stateMessage = isPowered ? "Lever turned ON." : "Lever turned OFF.";
         player.sendMessage(ChatColor.YELLOW + stateMessage);
 
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> leverManager.checkLeverStates(player), 1L);
-    }
+        if (leverManager.isLeverPartOfPuzzle(block.getLocation()))  {
+            plugin.getServer().getScheduler().runTaskLater(plugin, () -> leverManager.checkLeverStates(player), 1L);
 
+        }
+    }
     private boolean isLeverPowered(Block block) {
         return block.getBlockData().getAsString().contains("powered=true");
     }
+
 }
