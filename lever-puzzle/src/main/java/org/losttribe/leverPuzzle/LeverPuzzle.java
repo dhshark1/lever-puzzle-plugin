@@ -28,8 +28,6 @@ public class LeverPuzzle extends JavaPlugin {
     public void onDisable() {
         if (leverManager != null) {
             leverManager.saveConfigurations();
-        } else {
-            getLogger().severe("LeverPuzzle: LeverManager was not initialized!");
         }
     }
 
